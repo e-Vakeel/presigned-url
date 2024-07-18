@@ -32,45 +32,83 @@ app.use(express_1.default.json());
 const s3Client = new client_s3_1.S3Client({
     region: "ap-south-1",
     credentials: {
-        accessKeyId: "YOUR_ACCESS_KEY_ID",
-        secretAccessKey: "YOUR_SECRET_ACCESS_KEY",
+        accessKeyId: "AKIA4MTWMLPKWSAW6NB4",
+        secretAccessKey: "04M2GrvW0kImIjlCvv/qStV9FeLGR/yjd0hbpOhP",
     },
 });
 function getSignedUrlForGet(key) {
     return __awaiter(this, void 0, void 0, function* () {
-        const command = new client_s3_1.GetObjectCommand({
-            Bucket: "e-vakeel",
-            Key: key,
-        });
-        const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3Client, command, { expiresIn: 3600 });
-        return url;
+        console.log("Generating signed URL for:", key);
+        try {
+            const command = new client_s3_1.GetObjectCommand({
+                Bucket: "e-vakeel",
+                Key: key,
+            });
+            const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3Client, command, { expiresIn: 3600 });
+            console.log("Generated URL:", url);
+            console.log("Generated signed URL for:", key);
+            return url;
+        }
+        catch (error) {
+            console.error("Error generating signed URL:", error);
+            throw error;
+        }
     });
 }
-function printURL() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const url = yield getSignedUrlForGet("access control.pdf");
-        console.log("URL is", url);
-    });
-}
+// async function getSignedUrlForPut(filename: string, contentType: string): Promise<string> {
+//   const command = new PutObjectCommand({
+//     Bucket: "e-vakeel",
+//     Key: `/user/userID/${filename}`,
+//     ContentType: contentType,
+//   });
+//   const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+//   console.log(url);
+//   return url;
+// }
 function getSignedUrlForPut(filename, contentType) {
     return __awaiter(this, void 0, void 0, function* () {
-        const command = new client_s3_1.PutObjectCommand({
-            Bucket: "e-vakeel",
-            Key: `/user/userID/${filename}`,
-            ContentType: contentType,
-        });
-        const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3Client, command, { expiresIn: 3600 });
-        console.log(url);
-        return url;
+        try {
+            const command = new client_s3_1.PutObjectCommand({
+                Bucket: "e-vakeel",
+                Key: `/user/userID/${filename}`,
+                ContentType: contentType,
+            });
+            const url = yield (0, s3_request_presigner_1.getSignedUrl)(s3Client, command, { expiresIn: 3600 });
+            console.log(url);
+            return url;
+        }
+        catch (error) {
+            console.error("Error generating signed URL for PUT:", error);
+            throw error;
+        }
     });
 }
 // printURL();
 // getSignedUrlForGet("new.pdf", "application/pdf");
 app.post("/", (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    let filename = req.body.filename;
-    let contentType = req.body.contentType;
-    const response = yield getSignedUrlForPut(filename, contentType);
-    response ? res.status(200).send(response) : res.status(500).send("invalid request or ceredentials");
+    try {
+        let filename = req.body.filename;
+        let contentType = req.body.contentType;
+        if (!filename || !contentType) {
+            return res.status(400).send("Missing filename or contentType");
+        }
+        const response = yield getSignedUrlForPut(filename, contentType);
+        res.status(200).send(response);
+    }
+    catch (error) {
+        console.error('Error generating signed URL:', error);
+        res.status(500).send("Error generating signed URL");
+    }
+}));
+app.get("/", (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    let filename = req.query.filename;
+    if (filename) {
+        // const response = await getSignedUrlForGet(filename);
+        const response = yield getSignedUrlForGet(filename);
+        console.log(response);
+        response ? res.status(200).send(response) : res.status(500).send("invalid request or ceredentials");
+    }
+    return res.status(400).send("filename is required");
 }));
 // module.exports.handler = async (event: APIGatewayProxyEvent, context: Context): Promise<APIGatewayProxyResult> => {
 //   if (event.bodyevent.body.filename && event.body.contentType) {
